@@ -13,16 +13,21 @@ jobs:
       - name: Run scraper, capture encrypted log and screenshots
         run: |
           set +e
-          mkdir -p shots && chmod 777 shots
-          docker run --rm \
+          mkdir -p shots keep && chmod 777 shots
+          docker run --rm --name mm \
             -v $PWD/shots:/tmp/moneyman \
             -e MONEYMAN_CONFIG \
             -e MONEYMAN_UNSAFE_STDOUT \
             -e DEBUG \
             -e TZ \
-            ghcr.io/alicesitar/moneyman:latest > log.txt 2>&1
+            ghcr.io/alicesitar/moneyman:latest > log.txt 2>&1 &
+          DOCKER_PID=$!
+          while kill -0 $DOCKER_PID 2>/dev/null; do
+            cp -r shots/. keep/ 2>/dev/null
+            sleep 1
+          done
           echo "docker_exit_code=$?" >> log.txt
-          tar czf bundle.tgz log.txt shots
+          tar czf bundle.tgz log.txt keep
           openssl enc -aes-256-cbc -pbkdf2 -pass env:LOG_KEY -in bundle.tgz -out bundle.enc
         env:
           MONEYMAN_CONFIG: ${{ secrets.MONEYMAN_CONFIG }}
