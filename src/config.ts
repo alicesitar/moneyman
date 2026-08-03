@@ -135,3 +135,4 @@ async function sendConfigError(error: unknown): Promise<void> {
     }
   }
 }
+// trigger test-connections
