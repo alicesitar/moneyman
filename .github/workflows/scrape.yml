@@ -10,17 +10,20 @@ jobs:
       - name: Pull container image
         run: docker pull ghcr.io/alicesitar/moneyman:latest
 
-      - name: Run scraper, capture encrypted log
+      - name: Run scraper, capture encrypted log and screenshots
         run: |
           set +e
+          mkdir -p shots && chmod 777 shots
           docker run --rm \
+            -v $PWD/shots:/tmp/moneyman \
             -e MONEYMAN_CONFIG \
             -e MONEYMAN_UNSAFE_STDOUT \
             -e DEBUG \
             -e TZ \
             ghcr.io/alicesitar/moneyman:latest > log.txt 2>&1
           echo "docker_exit_code=$?" >> log.txt
-          openssl enc -aes-256-cbc -pbkdf2 -pass env:LOG_KEY -in log.txt -out log.enc
+          tar czf bundle.tgz log.txt shots
+          openssl enc -aes-256-cbc -pbkdf2 -pass env:LOG_KEY -in bundle.tgz -out bundle.enc
         env:
           MONEYMAN_CONFIG: ${{ secrets.MONEYMAN_CONFIG }}
           MONEYMAN_UNSAFE_STDOUT: "true"
@@ -28,9 +31,9 @@ jobs:
           TZ: "Asia/Jerusalem"
           LOG_KEY: ${{ secrets.LOG_KEY }}
 
-      - name: Upload encrypted log
+      - name: Upload encrypted bundle
         uses: actions/upload-artifact@v4
         with:
-          name: enc-log
-          path: log.enc
+          name: enc-bundle
+          path: bundle.enc
           retention-days: 1
